@@ -1,0 +1,54 @@
+#!/usr/bin/env Rscript
+'Apply selected gnomAD SV annotations to a VCF.
+
+Usage:
+    annotate-vcf.R <orig> <out> <annot>...
+
+' -> doc
+
+library(docopt)
+args <- docopt(doc, version = "annotate-vcf.R 0.1")
+
+suppressMessages(library(VariantAnnotation))
+suppressMessages(library(data.table))
+
+vcf <- readVcf(args$orig, genome="hg38")
+
+hdr <- header(vcf)
+info(hdr)['GNOMAD_V4_SVID',] <- rbind(c('1', 'String', 'ID for annotated gnomAD V4 SV variant'))
+info(hdr)['GNOMAD_V4_SV_AN',] <- rbind(c('1', 'Integer', 'Population allele number for annotated gnomAD V4 SV variant'))
+info(hdr)['GNOMAD_V4_SV_AC',] <- rbind(c('1', 'Integer', 'Population allele count for annotated gnomAD V4 SV variant'))
+info(hdr)['GNOMAD_V4_SV_HOMALT',] <- rbind(c('1', 'Integer', 'Population homozygous allele count for annotated gnomAD V4 SV variant'))
+info(hdr)['GNOMAD_V4_SV_HEMIALT',] <- rbind(c('1', 'Integer', 'Population hemizygous allele count for annotated gnomAD V4 SV variant'))
+info(hdr)['GNOMAD_V4_SV_AF',] <- rbind(c('1', 'Float', 'Population allele frequency for annotated gnomAD V4 SV variant'))
+info(hdr)['GNOMAD_V4_SV_EXACT',] <- rbind(c('1', 'Flag', 'The variant was an exact match for the annotated gnomAD V4 SV variant'))
+header(vcf) <- hdr
+
+info(vcf)$GNOMAD_V4_SVID <- ''
+info(vcf)$GNOMAD_V4_SV_AN <- 0
+info(vcf)$GNOMAD_V4_SV_AC <- 0
+info(vcf)$GNOMAD_V4_SV_HOMALT <- 0
+info(vcf)$GNOMAD_V4_SV_HEMIALT <- 0
+info(vcf)$GNOMAD_V4_SV_AF <- 0.0
+info(vcf)$GNOMAD_V4_SV_EXACT <- FALSE
+
+for (annot in args$annot) {
+  dat <- fread(annot)
+  info(vcf[dat$name])$GNOMAD_V4_SVID <- dat$gnomad
+  info(vcf[dat$name])$GNOMAD_V4_SV_AN <- dat$AN
+  info(vcf[dat$name])$GNOMAD_V4_SV_AC <- dat$AC
+  info(vcf[dat$name])$GNOMAD_V4_SV_HOMALT <- dat$N_HOMALT
+  info(vcf[dat$name])$GNOMAD_V4_SV_HEMIALT <- dat$N_HEMIALT_XY
+  info(vcf[dat$name])$GNOMAD_V4_SV_AF <- dat$AF
+}
+
+# remove empty values.
+info(vcf[info(vcf)$GNOMAD_V4_SVID == ""])$GNOMAD_V4_SV_AN <- NA
+info(vcf[info(vcf)$GNOMAD_V4_SVID == ""])$GNOMAD_V4_SV_AC <- NA
+info(vcf[info(vcf)$GNOMAD_V4_SVID == ""])$GNOMAD_V4_SV_HOMALT <- NA
+info(vcf[info(vcf)$GNOMAD_V4_SVID == ""])$GNOMAD_V4_SV_HEMIALT <- NA
+info(vcf[info(vcf)$GNOMAD_V4_SVID == ""])$GNOMAD_V4_SV_AF <- NA
+info(vcf[info(vcf)$GNOMAD_V4_SVID == ""])$GNOMAD_V4_SV_EXACT <- NA
+info(vcf[info(vcf)$GNOMAD_V4_SVID == ""])$GNOMAD_V4_SVID <- NA
+
+writeVcf(vcf, args$out, index = endsWith(args$out, ".gz"))

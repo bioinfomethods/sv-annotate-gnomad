@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""split-sv-bed.py - split a BED file with SV sites by svtype.
+
+Usage:
+    split-sv-bed.py [options] <BED> <output-prefix>
+
+Options:
+    --split NAME            The field name to use for splitting the BED file. [default: svtype]
+    --suffix SUFFIX         The suffix to use for output files [default: .bed]
+    --fields FIELDS         Comma separated list of column names. Overrides header, if present.
+"""
+import sys
+import gzip
+import docopt
+
+def smart_open(fn, mode = "rt"):
+    if fn.endswith(".gz"):
+        return gzip.open(fn, mode)
+    else:
+        return open(fn, mode)
+
+def main(args):
+    bed = smart_open(args['<BED>'], 'rt')
+    split = args['--split']
+    prefix = args['<output-prefix>']
+    suffix = args['--suffix']
+    outs = {}
+    hdr = None
+    flds = None
+    kindIdx = None
+    if args['--fields']:
+        t = args['--fields'].split(',')
+        hdr = '#' + '\t'.join(t) + '\n'
+        flds = dict(zip(t, range(len(t))))
+        kindIdx = flds[split]
+
+    for l in bed:
+        if l.startswith('#'):
+            if flds is None:
+                hdr = l
+                t = l.strip()[1:].split('\t')
+                flds = dict(zip(t, range(len(t))))
+                kindIdx = flds[split]
+            continue
+        t = l.strip().split('\t')
+        kind = t[kindIdx].split(':')[0]
+        if kind not in outs:
+            outFn = f'{prefix}-{kind}{suffix}'
+            print(f'creating {outFn}', file=sys.stderr)
+            out = smart_open(outFn, 'wt')
+            if hdr is not None:
+                out.write(hdr)
+            outs[kind] = out
+        out = outs[kind]
+        out.write(l)
+
+    for kind in outs.keys():
+        outs[kind].close()
+
+if __name__ == '__main__':
+    args = docopt.docopt(__doc__, version='prepare-reference.py 0.1')
+    main(args)

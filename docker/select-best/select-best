@@ -1,0 +1,61 @@
+#!/usr/bin/env Rscript
+'Take the output of "bedtools closest" and select the best match.
+
+Usage:
+    select-best.R [options] <TSV> <OUT>
+
+Options:
+    --min-overlap FRAC      Minimum overlap required to annotate. [default: 0.5]
+    --id-prefix PREFIX      gnomAD ID prefix to strip off IDs. [default: gnomAD-SV_v3_]
+' -> doc
+
+library(docopt)
+args <- docopt(doc, version = "select-best.R 0.1")
+
+frac <- as.numeric(args$min_overlap)
+prefix <- args$id_prefix
+
+library(data.table)
+
+dat <- fread(args$TSV)
+
+# Fix up the column names for the "sample" part, so we can use symbolic names
+cols <- colnames(dat)
+cols[1] <- paste0('x.', cols[1])
+cols[2] <- paste0('x.', cols[2])
+cols[3] <- paste0('x.', cols[3])
+cols[4] <- paste0('x.', cols[4])
+cols[5] <- paste0('x.', cols[5])
+cols[6] <- paste0('x.', cols[6])
+colnames(dat) <- cols
+
+dat[, exact := (start == x.start & end == x.end)]
+
+non.ins <- dat[x.svtype != "INS"]
+non.ins[, x.width := x.end - x.start]
+non.ins[, width := end - start]
+non.ins[, max.start := pmax(x.start, start)]
+non.ins[, min.end := pmin(x.end, end)]
+non.ins[, max.width := pmax(x.width, width)]
+non.ins[, overlap := min.end - max.start]
+non.ins[, overlap.ratio := overlap / max.width]
+non.ins <- rbind(non.ins[x.width >= 5000 & overlap.ratio >= 0.5],
+                 non.ins[x.width < 5000 & overlap.ratio >= 0.1])
+
+non.ins.wanted <- non.ins[, .(name = name[which.max(overlap.ratio)]), by=.(x.id)]
+non.ins.res <- merge(non.ins, non.ins.wanted, by=c('x.id', 'name'))
+non.ins.res <- non.ins.res[overlap.ratio >= frac]
+non.ins.res <- non.ins.res[, .(name = x.id, gnomad = sub(prefix, "", name), AN, AC, N_HOMALT, N_HEMIALT_XY, AF, exact)]
+
+ins <- dat[x.svtype == "INS"]
+ins[, ins.dist := abs(x.start - start)]
+ins[, ins.ratio := abs(x.svlen) / abs(SVLEN)]
+
+ins.wanted <- ins[, .(name = name[which.min(ins.dist)]), by=.(x.id)]
+ins.res <- merge(ins, ins.wanted, by=c('x.id', 'name'))
+ins.res <- ins.res[ins.dist < 100 & 0.1 < ins.ratio & ins.ratio < 10.0]
+ins.res <- ins.res[, .(name = x.id, gnomad = sub(prefix, "", name), AN, AC, N_HOMALT, N_HEMIALT_XY, AF, exact)]
+
+res <- rbind(non.ins.res, ins.res)[order(name)]
+
+fwrite(res, args$OUT, sep = "\t")
