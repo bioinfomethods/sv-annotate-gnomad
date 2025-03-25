@@ -6,11 +6,16 @@ ifndef GITHUB_TOKEN
 $(error GITHUB_TOKEN must be set)
 endif
 
-ifndef TAG
-$(error TAG must be set)
+ifndef REVISION_TAG
+$(error REVISION_TAG must be set)
+endif
+
+ifndef RELEASE_TAG
+$(error RELEASE_TAG must be set)
 endif
 
 build-docker-image: Dockerfile Makefile annotate-vcf
 	docker login ghcr.io --username $(GITHUB_USERNAME) --password $(GITHUB_TOKEN)
-	docker build . -t ghcr.io/bioinfomethods/annotate-vcf:$(TAG)
-	docker push ghcr.io/bioinfomethods/annotate-vcf:$(TAG)
+	docker build . -t ghcr.io/bioinfomethods/annotate-vcf:$(REVISION_TAG) -t ghcr.io/bioinfomethods/annotate-vcf:$(RELEASE_TAG)
+	docker push ghcr.io/bioinfomethods/annotate-vcf:$(REVISION_TAG)
+	docker push ghcr.io/bioinfomethods/annotate-vcf:$(RELEASE_TAG)
