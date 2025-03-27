@@ -1,5 +1,4 @@
-export REVISION_TAG = $(shell git rev-parse --short HEAD)
-export RELEASE_TAG = $(shell git describe --tags --exact-match 2> /dev/null | tr -d v)
+export RELEASE_TAG = "0.1"
 
 IMAGES = annotate-vcf select-best split-sv-bed
 
