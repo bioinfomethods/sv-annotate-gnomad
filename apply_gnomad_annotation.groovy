@@ -1,4 +1,4 @@
-SV_ANNOTATE_BASE        = new File(scriptPath).parentFile.canonicalPath
+SV_ANNOTATE_BASE        = new File("/group/bioi1/tomc/sv-annotate-gnomad/do_annotation.groovy").parentFile.canonicalPath
 
 GNOMAD_V4_SV_SITES      = "/hpc/genomeref/hg38/annotation/gnomad/gnomad.v4.1.sv.sites.bed.gz"
 GNOMAD_V4_SV_SITES_DIR  = "/hpc/genomeref/hg38/annotation/gnomad"

@@ -19,7 +19,7 @@ normalise_gzip = {
                 gunzip -c $input.gz | bgzip -c > $output.bgz
 
                 tabix -p vcf $output.bgz
-            """
+            ""","normalize_gzip"
         }
     } else {
         transform('.vcf') to('.vcf.bgz') {
@@ -27,7 +27,7 @@ normalise_gzip = {
                 bgzip -c $input.vcf > $output.bgz
 
                 tabix -p vcf $output.bgz
-            """
+            ""","normalize_gzip"
         }
     }
 }
