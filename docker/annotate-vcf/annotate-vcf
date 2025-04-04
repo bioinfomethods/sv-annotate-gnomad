@@ -25,10 +25,10 @@ info(hdr)['GNOMAD_V4_SV_EXACT',] <- rbind(c('1', 'Flag', 'The variant was an exa
 header(vcf) <- hdr
 
 info(vcf)$GNOMAD_V4_SVID <- ''
-info(vcf)$GNOMAD_V4_SV_AN <- 0
-info(vcf)$GNOMAD_V4_SV_AC <- 0
-info(vcf)$GNOMAD_V4_SV_HOMALT <- 0
-info(vcf)$GNOMAD_V4_SV_HEMIALT <- 0
+info(vcf)$GNOMAD_V4_SV_AN <- as.integer(0)
+info(vcf)$GNOMAD_V4_SV_AC <- as.integer(0)
+info(vcf)$GNOMAD_V4_SV_HOMALT <- as.integer(0)
+info(vcf)$GNOMAD_V4_SV_HEMIALT <- as.integer(0)
 info(vcf)$GNOMAD_V4_SV_AF <- 0.0
 info(vcf)$GNOMAD_V4_SV_EXACT <- FALSE
 
