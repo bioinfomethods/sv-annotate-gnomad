@@ -17,7 +17,7 @@ prefix <- args$id_prefix
 
 library(data.table)
 
-dat <- fread(args$TSV)
+dat <- fread(args$TSV, na.strings = c(".", "NA"))
 
 # Fix up the column names for the "sample" part, so we can use symbolic names
 cols <- colnames(dat)
