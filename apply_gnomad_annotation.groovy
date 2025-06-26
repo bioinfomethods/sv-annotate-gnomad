@@ -32,7 +32,7 @@ convert_vcf_to_bed = {
     output.dir = "sv_bed"
     transform(".vcf") to(".bed") {
         exec """
-            bcftools query -f'%CHROM\t%POS0\t%END\t%ID\t%SVTYPE\t%SVLEN\\n' -o $output $input
+            bcftools query -f'%CHROM\t%POS0\t%END\t%ID\t%SVTYPE\t%SVLEN\t%TSDLEN\\n' -o $output $input
         """, "bcftools"
     }
 }
@@ -44,7 +44,7 @@ split_bed = {
         def stem = branch.stem
 
         exec """
-            split-sv-bed --fields chrom,start,end,id,svtype,svlen $input ${stem}
+            split-sv-bed --fields chrom,start,end,id,svtype,svlen,tsdlen $input ${stem}
 
             touch $outputs
         """, "split_sv_bed"

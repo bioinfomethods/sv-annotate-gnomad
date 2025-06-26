@@ -1,4 +1,4 @@
-export RELEASE_TAG = "0.1"
+export RELEASE_TAG = "0.2"
 
 IMAGES = annotate-vcf select-best split-sv-bed
 

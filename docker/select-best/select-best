@@ -20,16 +20,23 @@ library(data.table)
 dat <- fread(args$TSV, na.strings = c(".", "NA"))
 
 # Fix up the column names for the "sample" part, so we can use symbolic names
+# Implemented by finding second occurrence of "chrom" and renaming up to there.
 cols <- colnames(dat)
-cols[1] <- paste0('x.', cols[1])
-cols[2] <- paste0('x.', cols[2])
-cols[3] <- paste0('x.', cols[3])
-cols[4] <- paste0('x.', cols[4])
-cols[5] <- paste0('x.', cols[5])
-cols[6] <- paste0('x.', cols[6])
+is.chrom <- (cols == "chrom")
+is.chrom[1] <- FALSE
+n <- which.max(is.chrom)
+for (i in 1:(n - 1)) {
+    cols[i] <- paste0('x.', cols[i])
+}
 colnames(dat) <- cols
 
 dat[, exact := (start == x.start & end == x.end)]
+
+# If we have TSDLEN, look for cases where gnomAD has placed the ME insertion
+# at the wrong end of the TSD, and call these "exact"
+if (sum(cols == "x.tsdlen") > 0) {
+    dat[!exact & !is.na(x.tsdlen) & start == x.start + x.tsdlen, exact := TRUE]
+}
 
 non.ins <- dat[x.svtype != "INS"]
 non.ins[, x.width := x.end - x.start]
