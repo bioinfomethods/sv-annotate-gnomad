@@ -1,0 +1,23 @@
+#!/bin/bash
+set -e 
+
+if [ $# != 2 ]
+then
+    echo "usage: sv-vcf-preprocess <src-vcf> <dest-vcf>" 1>&1
+    exit 1
+fi
+
+output() {
+    case "$1" in
+        *.gz | *.bgz)
+            gunzip -c "$1"
+        ;;
+        *)
+            cat "$1"
+        ;;
+    esac
+}
+
+output $1 | \
+    awk -f /scripts/fill-in-ids.awk | \
+    bcftools query -f'%CHROM\t%POS0\t%END\t%ID\t%SVTYPE\t%SVLEN\t%TSDLEN\n' -o $2 -

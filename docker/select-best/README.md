@@ -1,4 +1,4 @@
-# Docker image for `annotate-vcf` R script
+# Docker image for `select-best` R script
 
 This image was built:
 
