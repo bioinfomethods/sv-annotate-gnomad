@@ -1,4 +1,4 @@
-# Docker image for running bedtools find-closest.
+# Docker image for running bedtools find-closest
 
 This image was built:
 
