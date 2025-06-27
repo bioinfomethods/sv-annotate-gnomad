@@ -2,8 +2,21 @@ export RELEASE_TAG = "0.2"
 
 IMAGES = annotate-vcf find-closest select-best split-sv-bed sv-vcf-preprocess
 
-all: $(IMAGES)
+all: $(IMAGES) sv-annotate-gnomad
+
 $(IMAGES):
 	$(MAKE) -C $@
 
-.PHONY: all $(IMAGES)
+sv-annotate-gnomad: Dockerfile \
+		annotate-vcf/annotate-vcf \
+		find-closest/find-closest \
+		select-best/select-best \
+		split-sv-bed/split-sv-bed \
+		sv-vcf-preprocess/fill-in-ids.awk \
+		sv-vcf-preprocess/sv-vcf-preprocess
+	docker login ghcr.io --username $(GITHUB_USERNAME) --password $(GITHUB_TOKEN)
+	docker build . -t ghcr.io/bioinfomethods/sv-annotate-vcf:$(RELEASE_TAG)
+	docker push ghcr.io/bioinfomethods/sv-annotate-vcf:$(RELEASE_TAG)
+
+
+.PHONY: all $(IMAGES) sv-annotate-gnomad
