@@ -23,8 +23,8 @@ fix_vcf_ids = {
     transform(".vcf.bgz") to(".vcf") {
         println "preprocess ${input} to ${output}"
         exec """
-            gunzip -c $input | awk -f $SV_ANNOTATE_BASE/scripts/fill-in-ids.awk > $output
-        """
+            gunzip -c $input | awk -f /scripts/fill-in-ids.awk > $output
+        """, "sv_annotate_preprocess"
     }
 }
 
@@ -33,9 +33,11 @@ convert_vcf_to_bed = {
     transform(".vcf") to(".bed") {
         exec """
             bcftools query -f'%CHROM\t%POS0\t%END\t%ID\t%SVTYPE\t%SVLEN\t%TSDLEN\\n' -o $output $input
-        """, "bcftools"
+        """, "sv_annotate_preprocess"
     }
 }
+
+
 
 split_bed = {
     output.dir = "sv_bed"
@@ -71,8 +73,8 @@ run_bedtools_closest = {
         def ref = "${GNOMAD_V4_SV_SITES_DIR}/${GNOMAD_V4_SV_PREFIX}-${kind}.bed"
 
         exec """
-            $SV_ANNOTATE_BASE/scripts/run-closest.sh $input $ref $output
-        """, "bedtools"
+            find-closest $input $ref $output
+        """, "find_closest"
     }
 }
 
