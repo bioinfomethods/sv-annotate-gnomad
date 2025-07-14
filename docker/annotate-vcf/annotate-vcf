@@ -15,12 +15,12 @@ suppressMessages(library(data.table))
 vcf <- readVcf(args$orig, genome="hg38")
 
 hdr <- header(vcf)
-info(hdr)['GNOMAD_V4_SVID',] <- rbind(c('1', 'String', 'ID for annotated gnomAD V4 SV variant'))
-info(hdr)['GNOMAD_V4_SV_AN',] <- rbind(c('1', 'Integer', 'Population allele number for annotated gnomAD V4 SV variant'))
-info(hdr)['GNOMAD_V4_SV_AC',] <- rbind(c('1', 'Integer', 'Population allele count for annotated gnomAD V4 SV variant'))
-info(hdr)['GNOMAD_V4_SV_HOMALT',] <- rbind(c('1', 'Integer', 'Population homozygous allele count for annotated gnomAD V4 SV variant'))
-info(hdr)['GNOMAD_V4_SV_HEMIALT',] <- rbind(c('1', 'Integer', 'Population hemizygous allele count for annotated gnomAD V4 SV variant'))
-info(hdr)['GNOMAD_V4_SV_AF',] <- rbind(c('1', 'Float', 'Population allele frequency for annotated gnomAD V4 SV variant'))
+info(hdr)['GNOMAD_V4_SVID',] <- rbind(c('.', 'String', 'ID for annotated gnomAD V4 SV variant'))
+info(hdr)['GNOMAD_V4_SV_AN',] <- rbind(c('.', 'Integer', 'Population allele number for annotated gnomAD V4 SV variant'))
+info(hdr)['GNOMAD_V4_SV_AC',] <- rbind(c('.', 'Integer', 'Population allele count for annotated gnomAD V4 SV variant'))
+info(hdr)['GNOMAD_V4_SV_HOMALT',] <- rbind(c('.', 'Integer', 'Population homozygous allele count for annotated gnomAD V4 SV variant'))
+info(hdr)['GNOMAD_V4_SV_HEMIALT',] <- rbind(c('.', 'Integer', 'Population hemizygous allele count for annotated gnomAD V4 SV variant'))
+info(hdr)['GNOMAD_V4_SV_AF',] <- rbind(c('.', 'Float', 'Population allele frequency for annotated gnomAD V4 SV variant'))
 info(hdr)['GNOMAD_V4_SV_EXACT',] <- rbind(c('1', 'Flag', 'The variant was an exact match for the annotated gnomAD V4 SV variant'))
 header(vcf) <- hdr
 
