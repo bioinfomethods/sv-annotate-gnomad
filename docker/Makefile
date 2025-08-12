@@ -1,6 +1,6 @@
 export RELEASE_TAG = "0.2"
 
-IMAGES = annotate-vcf find-closest select-best split-sv-bed sv-vcf-preprocess
+IMAGES = annotate-vcf find-closest gene-names-to-ids select-best split-sv-bed sv-vcf-preprocess
 
 all: $(IMAGES) sv-annotate-gnomad
 
@@ -10,6 +10,7 @@ $(IMAGES):
 sv-annotate-gnomad: Dockerfile \
 		annotate-vcf/annotate-vcf \
 		find-closest/find-closest \
+		gene-names-to-ids/gene-names-to-ids \
 		select-best/select-best \
 		split-sv-bed/split-sv-bed \
 		sv-vcf-preprocess/fill-in-ids.awk \

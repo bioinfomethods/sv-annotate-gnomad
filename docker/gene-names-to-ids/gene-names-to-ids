@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+"""gene-names-to-ids - postprocess SVAnnotate annotations to convert gene names to gene IDs.
+
+Usage:
+    gene-names-to-ids <GTF> <input> <output>
+"""
+import gzip
+import os
+import pickle
+import re
+import sys
+
+import docopt
+import pysam
+
+def smart_open(fn, mode = "rt"):
+    if fn.endswith(".gz"):
+        return gzip.open(fn, mode)
+    else:
+        return open(fn, mode)
+
+def parse_attr_value(txt):
+    try:
+        return int(txt)
+    except ValueError:
+        pass
+    try:
+        return float(txt)
+    except ValueError:
+        pass
+    if txt.startswith('"') and txt.endswith('"'):
+        return txt[1:-1]
+    return txt
+
+def read_gencode(filename):
+    with smart_open(filename) as f:
+        prev_chrom = ""
+        for l in f:
+            if l.startswith('#'):
+                continue
+            t = l.strip().split('\t')
+            chrom = t[0]
+            source = t[1]
+            feature = t[2]
+            start = int(t[3])
+            end = int(t[4])
+            score = t[5]
+            if score == '.':
+                score = None
+            else:
+                score = float(score)
+            strand = t[6]
+            frame = t[7]
+            if frame == '.':
+                frame = None
+            else:
+                frame = int(frame)
+
+            attributes = {}
+            for attr_txt in t[8].split(';'):
+                if len(attr_txt) == 0:
+                    continue
+                attr_pack = attr_txt.strip().split(' ')
+                attr_name = attr_pack[0]
+                attr_value = parse_attr_value(' '.join(attr_pack[1:]))
+                if attr_name not in attributes:
+                    attributes[attr_name] = []
+                if attr_value != '':
+                    attributes[attr_name].append(attr_value)
+
+            if prev_chrom != chrom:
+                print(f'scanning chromosome {chrom}', file=sys.stderr)
+                prev_chrom = chrom
+
+            item = {
+                "chrom": chrom,
+                "source": source,
+                "feature": feature,
+                "start": start,
+                "end": end,
+                "score": score,
+                "strand": strand,
+                "frame": frame,
+                "attributes": attributes
+            }
+            yield item
+
+def overlaps(lhs, rhs):
+    lhs[0] == rhs[0] and lhs[2] >= rhs[1] and lhs[1] <= rhs[2]
+
+class GeneNameIndex(object):
+    def __init__(self, filename):
+        self.gencode_filename = filename
+        if os.path.exists(self.pickle_name()):
+            with open(self.pickle_name(), 'rb') as f:
+                self.index = pickle.load(f)
+        else:
+            print(f'no pickle file found, so creating it from {filename}', file=sys.stderr)
+            self.load_from_gencode()
+            with open(self.pickle_name(), 'wb') as f:
+                pickle.dump(self.index, f)
+
+
+    def resolve(self, gene_name, locus, tag):
+        (chrom, _start, _end) = locus
+        result = []
+        for item in self.index.get(gene_name, []):
+            item_locus = item["locus"]
+            # Let's assume chrom is good enough
+            if item_locus[0] == chrom:
+                result.append(item)
+
+        if len(result) == 0:
+            # Test to see if it's a gene ID already
+            if re.match('^ENSG[0-9]+$', gene_name):
+                return gene_name
+            
+            print(f'WARNING: gene name not found: {gene_name} ({tag})', file=sys.stderr)
+            return gene_name
+            #raise BaseException(f'no ID found for {gene_name}')
+        
+        #if len(result) > 1:
+        #    # Just chrom wasn't specific enough, so let's try for an overlapping genes.
+        #    olps = list(filter(lambda item: overlaps(locus, item["locus"]), result))
+        #    if len(olps) > 0:
+        #        result = olps
+
+        if len(result) > 1:
+            print(f'WARNING: ambiguous IDs for {tag}={gene_name}: {result}', file=sys.stderr)
+            #raise BaseException(f'ambiguous IDs found for {gene_name}', result)
+
+        return result[0]["gene_id"]
+    
+    def load_from_gencode(self):
+        self.index = {}
+
+        for rec in read_gencode(self.gencode_filename):
+            if rec["feature"] != "gene":
+                continue
+            locus = (rec["chrom"], rec["start"], rec["end"], rec["strand"])
+            gene_id = rec["attributes"].get('gene_id', None)[0]
+            gene_id = re.sub('[.][0-9]+$', "", gene_id)
+            gene_name = rec["attributes"].get('gene_name', None)[0]
+            if gene_name not in self.index:
+                self.index[gene_name] = []
+            self.index[gene_name].append({"locus": locus, "gene_id": gene_id})
+
+    def pickle_name(self):
+        return self.gencode_filename.removesuffix(".gz").removesuffix(".gtf") + ".gene-index.pickle"
+
+def fix_record(idx, rec):
+    locus = (rec.chrom, rec.start, rec.stop)
+
+    keys_to_remove = []
+    for info_key in rec.info.keys():
+        if info_key.startswith("PREDICTED_"):
+            predicted = rec.info[info_key]
+            if predicted is True:
+                continue
+            if len(predicted) == 1 and predicted[0] == '.':
+                keys_to_remove.append(info_key)
+                continue
+            gene_names = rec.info[info_key]
+            gene_ids = set()
+            for gene_name in gene_names:
+                if '&' in gene_name:
+                    for name in set(gene_name.split('&')):
+                            gene_ids.add(idx.resolve(name, locus, info_key))
+                else:
+                    gene_ids.add(idx.resolve(gene_name, locus, info_key))
+            gene_ids = tuple(sorted(gene_ids))
+            rec.info[info_key] = gene_ids
+    for key in keys_to_remove:
+        del rec.info[key]
+    return rec   
+
+def main(args):
+    idx = GeneNameIndex(args["<GTF>"])
+
+    with pysam.VariantFile(args["<input>"]) as vcf:
+        with pysam.VariantFile(args["<output>"], "w", header=vcf.header) as out:
+            for rec in vcf:
+                if rec.info.get("SVTYPE", "") == "BND":
+                    continue
+                rec = fix_record(idx, rec)
+                out.write(rec)
+
+if __name__ == '__main__':
+    args = docopt.docopt(__doc__, version='gene-names-to-ids 0.1')
+    main(args)
