@@ -115,9 +115,9 @@ class GeneNameIndex(object):
             if re.match('^ENSG[0-9]+$', gene_name):
                 return gene_name
             
-            print(f'WARNING: gene name not found: {gene_name} ({tag})', file=sys.stderr)
-            return gene_name
-            #raise BaseException(f'no ID found for {gene_name}')
+            #print(f'WARNING: gene name not found: {gene_name} ({tag})', file=sys.stderr)
+            #return gene_name
+            raise BaseException(f'no ID found for {gene_name}')
         
         #if len(result) > 1:
         #    # Just chrom wasn't specific enough, so let's try for an overlapping genes.
@@ -126,8 +126,8 @@ class GeneNameIndex(object):
         #        result = olps
 
         if len(result) > 1:
-            print(f'WARNING: ambiguous IDs for {tag}={gene_name}: {result}', file=sys.stderr)
-            #raise BaseException(f'ambiguous IDs found for {gene_name}', result)
+            #print(f'WARNING: ambiguous IDs for {tag}={gene_name}: {result}', file=sys.stderr)
+            raise BaseException(f'ambiguous IDs found for {gene_name}', result)
 
         return result[0]["gene_id"]
     
