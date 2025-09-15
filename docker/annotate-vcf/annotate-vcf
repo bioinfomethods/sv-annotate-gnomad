@@ -40,6 +40,7 @@ for (annot in args$annot) {
   info(vcf[dat$name])$GNOMAD_V4_SV_HOMALT <- dat$N_HOMALT
   info(vcf[dat$name])$GNOMAD_V4_SV_HEMIALT <- dat$N_HEMIALT_XY
   info(vcf[dat$name])$GNOMAD_V4_SV_AF <- dat$AF
+  info(vcf[dat$name])$GNOMAD_V4_SV_EXACT <- dat$exact
 }
 
 # remove empty values.
