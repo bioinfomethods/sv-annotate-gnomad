@@ -1,4 +1,4 @@
-export RELEASE_TAG = "0.2"
+export RELEASE_TAG = "0.3"
 
 IMAGES = annotate-vcf find-closest gene-names-to-ids select-best split-sv-bed sv-vcf-preprocess
 
