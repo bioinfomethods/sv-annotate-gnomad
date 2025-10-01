@@ -124,7 +124,6 @@ class GeneNameIndex(object):
 
         result = []
         result2 = []
-        print(f'looking for "{gene_name}"')
         for item in self.index.get(gene_name, []):
             item_locus = item["locus"]
             # Let's assume chrom is good enough
