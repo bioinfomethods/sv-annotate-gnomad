@@ -101,16 +101,39 @@ class GeneNameIndex(object):
                 pickle.dump(self.index, f)
 
 
-    def resolve(self, gene_name, locus, tag):
+    # The basic resolution strategy is that we expect that when
+    # we look up a gene name it will usually map to a single Ensembl
+    # gene id. There are however a few cases, such as chrX/chrY
+    # homologs where the chrX and chrY versions of the gene have
+    # the same name, but distinct Ensembl gene ids.
+    #
+    # In these cases we look on the chromosome of the SV to pick
+    # the appropriate id.
+    #
+    # A further exception is the case of breakend variants which
+    # involve 2 genes. Since it is possible that the two ends could
+    # hit both copies of the gene, we have to return a set of ids,
+    # not just a single id.
+    #
+    def resolve(self, gene_name, locus, locus2, tag):
         (chrom, _start, _end) = locus
+
+        chrom2 = None
+        if locus2 is not None:
+            (chrom2, _start2, _end2) = locus2
+
         result = []
+        result2 = []
+        print(f'looking for "{gene_name}"')
         for item in self.index.get(gene_name, []):
             item_locus = item["locus"]
             # Let's assume chrom is good enough
             if item_locus[0] == chrom:
                 result.append(item)
+            if chrom2 is not None and item_locus[0] == chrom2:
+                result2.append(item)
 
-        if len(result) == 0:
+        if len(result) == 0 and len(result2) == 0:
             # Test to see if it's a gene ID already
             if re.match('^ENSG[0-9]+$', gene_name):
                 return gene_name
@@ -119,17 +142,16 @@ class GeneNameIndex(object):
             #return gene_name
             raise BaseException(f'no ID found for {gene_name}')
         
-        #if len(result) > 1:
-        #    # Just chrom wasn't specific enough, so let's try for an overlapping genes.
-        #    olps = list(filter(lambda item: overlaps(locus, item["locus"]), result))
-        #    if len(olps) > 0:
-        #        result = olps
-
-        if len(result) > 1:
+        if len(result) > 1 or len(result2) > 1:
             #print(f'WARNING: ambiguous IDs for {tag}={gene_name}: {result}', file=sys.stderr)
             raise BaseException(f'ambiguous IDs found for {gene_name}', result)
 
-        return result[0]["gene_id"]
+        result_ids = set()
+        for item in result:
+            result_ids.add(item["gene_id"])
+        for item in result2:
+            result_ids.add(item["gene_id"])
+        return result_ids
     
     def load_from_gencode(self):
         self.index = {}
@@ -151,6 +173,12 @@ class GeneNameIndex(object):
 def fix_record(idx, rec):
     locus = (rec.chrom, rec.start, rec.stop)
 
+    locus2 = None
+    if rec.info.get("SVTYPE", "") == "BND":
+        chrom2 = rec.info["CHR2"]
+        end2 = rec.info["END2"]
+        locus2 = (chrom2, end2, end2 + 1)
+
     keys_to_remove = []
     for info_key in rec.info.keys():
         if info_key.startswith("PREDICTED_"):
@@ -165,9 +193,9 @@ def fix_record(idx, rec):
             for gene_name in gene_names:
                 if '&' in gene_name:
                     for name in set(gene_name.split('&')):
-                            gene_ids.add(idx.resolve(name, locus, info_key))
+                            gene_ids |= idx.resolve(name, locus, locus2, info_key)
                 else:
-                    gene_ids.add(idx.resolve(gene_name, locus, info_key))
+                    gene_ids |= idx.resolve(gene_name, locus, locus2, info_key)
             gene_ids = tuple(sorted(gene_ids))
             rec.info[info_key] = gene_ids
     for key in keys_to_remove:
@@ -180,8 +208,6 @@ def main(args):
     with pysam.VariantFile(args["<input>"]) as vcf:
         with pysam.VariantFile(args["<output>"], "w", header=vcf.header) as out:
             for rec in vcf:
-                if rec.info.get("SVTYPE", "") == "BND":
-                    continue
                 rec = fix_record(idx, rec)
                 out.write(rec)
 
