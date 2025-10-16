@@ -176,6 +176,8 @@ def fix_record(idx, rec):
     if rec.info.get("SVTYPE", "") == "BND":
         chrom2 = rec.info["CHR2"]
         end2 = rec.info["END2"]
+        if isinstance(end2, (list, tuple)):
+            end2 = end2[0]
         locus2 = (chrom2, end2, end2 + 1)
 
     keys_to_remove = []
